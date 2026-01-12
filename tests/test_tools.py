@@ -138,25 +138,21 @@ class TestStateSchema:
             bank="GALICIA",
             credit_card="VISA",
             installments=12,
-            price_per_installment=10000.0
+            promotion_id="PROMO001"
         )
         assert plan.bank == "GALICIA"
         assert plan.credit_card == "VISA"
         assert plan.installments == 12
-        assert plan.price_per_installment == 10000.0
+        assert plan.promotion_id == "PROMO001"
 
     def test_product_line_dataclass(self):
-        """Test ProductLine dataclass"""
+        """Test ProductLine dataclass - prices are calculated by the system, not stored"""
         from agents.state import ProductLine
         product = ProductLine(
             product_id="TEST001",
             description="Test Product",
-            quantity=2,
-            unit_price=50000.0,
-            subtotal=100000.0
+            quantity=2
         )
         assert product.product_id == "TEST001"
         assert product.description == "Test Product"
         assert product.quantity == 2
-        assert product.unit_price == 50000.0
-        assert product.subtotal == 100000.0

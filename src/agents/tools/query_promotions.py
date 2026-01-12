@@ -65,6 +65,10 @@ def search_promotions(
         bank: Bank name (e.g., "GALICIA", "MACRO")
         credit_card: Credit card brand (e.g., "VISA", "MASTERCARD", "AMEX")
         installments: Number of installments desired (e.g., 3, 6, 9, 12)
+
+    Note:
+        Any parameter set to None is ignored and will not be used as a filter.
+        Only the provided (non-None) parameters are applied when searching promotions.
     """
     logger.info(f"Searching promotions - bank: {bank}, card: {credit_card}, installments: {installments}")
 

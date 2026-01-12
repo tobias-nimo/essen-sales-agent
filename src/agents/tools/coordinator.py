@@ -4,6 +4,7 @@ from config import OUTPUT_DIR
 from agents.catalog_agent import catalog_agent
 from agents.promotions_agent import promotions_agent
 from agents.state import ProductLine, PaymentPlan, CustomerInformation
+from agents.tools.search_catalog import load_prices
 
 from typing import Optional, Dict, List
 from datetime import datetime
@@ -13,6 +14,9 @@ import json
 from langchain.messages import HumanMessage, ToolMessage
 from langchain.tools import tool, ToolRuntime
 from langgraph.types import Command
+
+# Load price data for budget calculations
+_prices = load_prices()
 
 @tool
 def lookup_products(products: list[str]) -> str:
@@ -29,16 +33,16 @@ def lookup_products(products: list[str]) -> str:
     return response['messages'][-1].content
 
 @tool
-def get_available_promotions(banks: list[str], installments: list[int], credit_card: list[str]) -> str:
+def get_available_promotions(banks: list[str], installments: list[int], credit_cards: list[str]) -> str:
     """
     Return available sales promotions and discounts
     for the given banks and credit card installment options.
     """
     query = f"""
-    Find available promotions for:
-    - Banks: {', '.join(banks)}
-    - Installments: {', '.join(map(str, installments))}
-    - Credit cards: {', '.join(map(str, installments))}
+    Find available promotions that satisfy **all** of the following conditions (logical AND):
+    - Bank is one of: {', '.join(banks)}
+    - Installments include: {', '.join(map(str, installments))}
+    - Credit card is one of: {', '.join(credit_cards)}
     """
 
     response = promotions_agent.invoke(
@@ -61,15 +65,15 @@ def add_product_to_cart(
         product_id: Unique product identifier
         description: Product description
         quantity: Number of units
-        unit_price: Price per unit
 
-    NOTE: 
+    NOTE:
         This function overwrites the entry for a given product_id.
-        To increase quantity for an existing product, first read the current 
+        To increase quantity for an existing product, first read the current
         quantity and pass the updated total explicitly.
-    """
-    subtotal = quantity * unit_price
 
+        Prices are NOT stored in cart - they are calculated at quote generation
+        time based on the selected payment method and plan.
+    """
     product_line = ProductLine(
         product_id=product_id,
         description=description,
@@ -80,21 +84,50 @@ def add_product_to_cart(
     current_products = runtime.state.get("products", {})
     current_products[product_id] = product_line
 
-    # Recalculate total
-    total = sum(p.subtotal for p in current_products.values())
-
     return Command(
         update={
             "products": current_products,
-            "total_amount": total,
             "messages": [ToolMessage(
-                content=f"Added {quantity}x {description} to cart. Subtotal: ${subtotal:.2f}",
+                content=f"Added {quantity}x {description} to cart.",
                 tool_call_id=runtime.tool_call_id
             )]
         }
     )
 
-# TODO: add remove_product_from_cart tool
+@tool
+def remove_product_from_cart(
+    product_id: str,
+    runtime: ToolRuntime
+) -> Command:
+    """
+    Remove a product from the shopping cart.
+
+    Args:
+        product_id: Unique product identifier to remove
+    """
+    current_products = runtime.state.get("products", {})
+
+    if product_id not in current_products:
+        return Command(
+            update={
+                "messages": [ToolMessage(
+                    content=f"Product {product_id} not found in cart.",
+                    tool_call_id=runtime.tool_call_id
+                )]
+            }
+        )
+
+    removed_product = current_products.pop(product_id)
+
+    return Command(
+        update={
+            "products": current_products,
+            "messages": [ToolMessage(
+                content=f"Removed {removed_product.description} from cart.",
+                tool_call_id=runtime.tool_call_id
+            )]
+        }
+    )
 
 @tool
 def set_payment_method(
@@ -129,11 +162,11 @@ def set_payment_method(
 
 @tool
 def set_payment_plan(
+    runtime: ToolRuntime,
     bank: str,
     credit_card: str,
     installments: int,
-    promotion_id: Optional[str] = None,
-    runtime: ToolRuntime
+    promotion_id: Optional[str] = None
 ) -> Command:
     """
     Set the payment plan for credit card purchases.
@@ -193,6 +226,80 @@ def set_customer_information(
         }
     )
 
+def _parse_price(value: str) -> float:
+    """Parse price string to float, handling empty or invalid values."""
+    if not value or value == 'N/A':
+        return 0.0
+    try:
+        # Handle both comma and dot decimal separators
+        return float(str(value).replace(',', '.'))
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def _get_unit_price(product_id: str, payment_method: str, payment_plan: Optional[PaymentPlan]) -> float:
+    """
+    Calculate the unit price for a product based on payment method and plan.
+
+    Pricing logic:
+    - CASH/WIRE: Use cash_price (or base_price if cash_price is 0)
+    - CREDIT_CARD + promotion: Use base_price (promotional = base_price / installments)
+    - CREDIT_CARD + no promotion: Use installment_n * n (total from standard installments)
+    """
+    price_info = _prices.get(product_id, {})
+
+    if payment_method in ("CASH", "WIRE"):
+        cash_price = _parse_price(price_info.get('cash_price', '0'))
+        if cash_price > 0:
+            return cash_price
+        # Fallback to base_price if cash_price is 0
+        return _parse_price(price_info.get('base_price', '0'))
+
+    # CREDIT_CARD payment
+    if payment_plan and payment_plan.promotion_id:
+        # With promotion: use base_price (installment = base_price / n)
+        return _parse_price(price_info.get('base_price', '0'))
+
+    # Without promotion: total = installment_price * num_installments
+    if payment_plan:
+        installments = payment_plan.installments
+        installment_key = f'installments_{installments}'
+        installment_price = _parse_price(price_info.get(installment_key, '0'))
+
+        if installment_price > 0:
+            return installment_price * installments
+
+    # Fallback to base_price
+    return _parse_price(price_info.get('base_price', '0'))
+
+
+def _calculate_budget(state: dict) -> List[dict]:
+    """Calculate budget line items with prices based on payment method."""
+    budget = []
+    products = state.get("products", {})
+    payment_method = state.get("payment_method", "CASH")
+    payment_plan = state.get("payment_plan")
+
+    for product_id, product in products.items():
+        unit_price = _get_unit_price(product_id, payment_method, payment_plan)
+        subtotal = product.quantity * unit_price
+
+        budget.append({
+            "id": product.product_id,
+            "description": product.description,
+            "quantity": product.quantity,
+            "unit_price": unit_price,
+            "subtotal": subtotal
+        })
+
+    return budget
+
+
+def _calculate_total(budget: List[dict]) -> float:
+    """Calculate total amount from budget line items."""
+    return sum(item["subtotal"] for item in budget)
+
+
 @tool
 def generate_quote_pdf(runtime: ToolRuntime) -> str:
     """
@@ -208,61 +315,48 @@ def generate_quote_pdf(runtime: ToolRuntime) -> str:
         return "Cannot generate quote: Payment method not set"
 
     # Create a quote summary
-    products = state["products"]
-    customer = state["customer_information"]
+    customer = state.get("customer_information")
     payment_method = state["payment_method"]
     payment_plan = state.get("payment_plan")
 
-    # TODO: 
-    #- calculate price_per_installment in case payment_method is CREDIT_CARD
-    #- calculate total_price in case payment_method is CASH / WIRE
+    # Calculate budget and totals
+    budget = _calculate_budget(state)
+    total_amount = _calculate_total(budget)
 
-    def calculate_budget(state):
-        budget = []
-        for p in state["products"]:
-
-            # CASH or WIRE
-            if state["payment_method"] == "CASH" or state["payment_method"] == "WIRE":
-                # TODO: lookup the cash price for the product id -> unit price
-            # CREDIT_CARD + promotion
-            elif state.get("payment_plan").get("promotion_id"):
-                    # TODO: lookup for the base price for the product id -> unit price
-            # CREDIT_CARD + no promotion
-            else:
-                    # TODO: lookup for the  installment_n price and multiple by n (installments) -> unit price 
-
-            budget.append({
-                        "id": p.product_id,
-                        "description": p.description,
-                        "quantity": p.quantity,
-                        "unit_price": unit_price,
-                        "subtotal": p.subtotal*unit_price
-                    })
-        return budget
-
-    def calculate_total(budget):
-        # TODO: calculate total amount
-        return total_amount
+    # For credit card with promotion, also calculate installment info
+    price_per_installment = None
+    if payment_method == "CREDIT_CARD" and payment_plan:
+        installments = payment_plan.installments
+        if payment_plan.promotion_id:
+            # Promotional pricing: total / installments (interest-free)
+            price_per_installment = total_amount / installments
+        else:
+            # Standard installments: sum of monthly payments
+            price_per_installment = total_amount / installments
 
     # Generate quote data
     quote_data = {
         "date": datetime.now().isoformat(),
-        "customer": {
+        "products": budget,
+        "payment_method": payment_method,
+        "total_amount": total_amount
+    }
+
+    # Add customer info if available
+    if customer:
+        quote_data["customer"] = {
             "name": customer.name,
             "email": customer.email,
             "phone": customer.phone
-        },
-        "products": calculate_budget(state),
-        "payment_method": payment_method,
-        "total_amount": calculate_total(budget)
-    }
+        }
 
     if payment_plan:
         quote_data["payment_plan"] = {
             "bank": payment_plan.bank,
             "credit_card": payment_plan.credit_card,
             "installments": payment_plan.installments,
-            "promotion_id": payment_plan.promotion_id
+            "promotion_id": payment_plan.promotion_id,
+            "price_per_installment": price_per_installment
         }
 
     # In production, this would:
