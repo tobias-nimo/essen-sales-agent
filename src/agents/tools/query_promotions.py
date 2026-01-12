@@ -1,20 +1,36 @@
 # src/agents/tools/query_promotions.py
-
-from config import DATA_DIR
+"""
+Promotion query tools for the promotions agent.
+"""
 
 import json
-from pathlib import Path
 from typing import List, Optional
 from datetime import datetime
+from loguru import logger
 from langchain.tools import tool
+
+from config import DATA_DIR
 
 # Path to promotions file
 PROMOTIONS_FILE = DATA_DIR / "promotions.json"
 
 def load_promotions() -> List[dict]:
     """Load promotions from JSON file"""
-    with open(PROMOTIONS_FILE, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    logger.debug(f"Loading promotions from: {PROMOTIONS_FILE}")
+    try:
+        with open(PROMOTIONS_FILE, 'r', encoding='utf-8') as f:
+            promotions = json.load(f)
+        logger.debug(f"Loaded {len(promotions)} promotions")
+        return promotions
+    except FileNotFoundError:
+        logger.error(f"Promotions file not found: {PROMOTIONS_FILE}")
+        return []
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in promotions file: {e}")
+        return []
+    except Exception as e:
+        logger.exception(f"Error loading promotions: {e}")
+        return []
 
 def is_promotion_available(promotion: dict, current_date: datetime = None) -> bool:
     """Check if a promotion is currently available"""
@@ -33,6 +49,9 @@ def is_promotion_available(promotion: dict, current_date: datetime = None) -> bo
 
     return False
 
+# Load promotions in-memory
+promotions = load_promotions()
+
 @tool
 def search_promotions(
     bank: Optional[str] = None,
@@ -47,7 +66,8 @@ def search_promotions(
         credit_card: Credit card brand (e.g., "VISA", "MASTERCARD", "AMEX")
         installments: Number of installments desired (e.g., 3, 6, 9, 12)
     """
-    promotions = load_promotions()
+    logger.info(f"Searching promotions - bank: {bank}, card: {credit_card}, installments: {installments}")
+
     matches = []
 
     for promo in promotions:
@@ -70,6 +90,8 @@ def search_promotions(
             continue
 
         matches.append(promo)
+
+    logger.debug(f"Found {len(matches)} matching promotions")
 
     if not matches:
         filters = []
@@ -112,13 +134,16 @@ def get_promotion_by_id(promotion_id: str) -> str:
     Args:
         promotion_id: The unique promotion identifier (e.g., "001", "002")
     """
-    promotions = load_promotions()
+    logger.info(f"Getting promotion details for ID: {promotion_id}")
+
     promo = next((p for p in promotions if p['id'] == promotion_id), None)
 
     if not promo:
+        logger.warning(f"Promotion not found: {promotion_id}")
         return f"Promotion with ID {promotion_id} not found"
 
     if not is_promotion_available(promo):
+        logger.info(f"Promotion {promotion_id} is not currently available")
         return f"Promotion {promotion_id} is not currently available"
 
     result = f"Promotion: {promo['name']} (ID: {promo['id']})\n"
@@ -148,8 +173,11 @@ def get_promotion_by_id(promotion_id: str) -> str:
 @tool
 def list_all_promotions() -> str:
     """List all currently available promotions"""
-    promotions = load_promotions()
+    logger.info("Listing all available promotions")
+
     available = [p for p in promotions if is_promotion_available(p)]
+
+    logger.debug(f"Found {len(available)} available promotions out of {len(promotions)} total")
 
     if not available:
         return "No promotions are currently available"

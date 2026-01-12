@@ -2,7 +2,7 @@
   {
     "id": "001",
     "name": "PROMO001",
-    "banks": ["GALICIA"], //Inclue ex-clientes Galicia+
+    "banks": ["GALICIA"],
     "credit_cards": ["VISA","MASTER","AMEX"],
     "installments": [1,3,6,9,12],
     "availability": {
@@ -46,7 +46,7 @@
       },
     "wallets" : [{"name": "MODO", "is_optional": true}],
     "reimbursement": null
-    }
+    },
   {
     "id": "005",
     "name": "PROMO005",

@@ -1,11 +1,14 @@
 # src/agents/tools/search_catalog.py
-
-from config import DATA_DIR
+"""
+Catalog search tools for the product catalog agent.
+"""
 
 import csv
-from pathlib import Path
 from typing import List, Dict
+from loguru import logger
 from langchain.tools import tool
+
+from config import DATA_DIR
 
 # Path to data files
 CATALOG_FILE = DATA_DIR / "catalog.csv"
@@ -13,21 +16,39 @@ PRICE_FILE = DATA_DIR / "price_list.csv"
 
 def load_catalog() -> List[Dict[str, str]]:
     """Load catalog from CSV file"""
+    logger.debug(f"Loading catalog from: {CATALOG_FILE}")
     products = []
-    with open(CATALOG_FILE, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            products.append(row)
+    try:
+        with open(CATALOG_FILE, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                products.append(row)
+        logger.debug(f"Loaded {len(products)} products from catalog")
+    except FileNotFoundError:
+        logger.error(f"Catalog file not found: {CATALOG_FILE}")
+    except Exception as e:
+        logger.exception(f"Error loading catalog: {e}")
     return products
 
 def load_prices() -> Dict[str, Dict[str, str]]:
     """Load prices from CSV file, indexed by product ID"""
+    logger.debug(f"Loading prices from: {PRICE_FILE}")
     prices = {}
-    with open(PRICE_FILE, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            prices[row['id']] = row
+    try:
+        with open(PRICE_FILE, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                prices[row['id']] = row
+        logger.debug(f"Loaded prices for {len(prices)} products")
+    except FileNotFoundError:
+        logger.error(f"Price file not found: {PRICE_FILE}")
+    except Exception as e:
+        logger.exception(f"Error loading prices: {e}")
     return prices
+
+# Load catalog in-memory
+catalog = load_catalog()
+prices = load_prices()
 
 @tool
 def search_products(query: str) -> str:
@@ -38,8 +59,7 @@ def search_products(query: str) -> str:
     Args:
         query: Search term to find products (e.g., "sarten", "cacerola", "combo")
     """
-    catalog = load_catalog()
-    prices = load_prices()
+    logger.info(f"Searching products with query: '{query}'")
 
     # Simple case-insensitive substring search
     query_lower = query.lower()
@@ -47,6 +67,8 @@ def search_products(query: str) -> str:
         p for p in catalog
         if query_lower in p['description'].lower()
     ]
+
+    logger.debug(f"Found {len(matches)} matches for query '{query}'")
 
     if not matches:
         return f"No products found matching '{query}'"
@@ -78,13 +100,13 @@ def get_product_by_id(product_id: str) -> str:
     Args:
         product_id: The unique product identifier (e.g., "80010010")
     """
-    catalog = load_catalog()
-    prices = load_prices()
+    logger.info(f"Getting product details for ID: {product_id}")
 
     # Find product in catalog
     product = next((p for p in catalog if p['id'] == product_id), None)
 
     if not product:
+        logger.warning(f"Product not found: {product_id}")
         return f"Product with ID {product_id} not found"
 
     # Get price information
@@ -99,18 +121,3 @@ def get_product_by_id(product_id: str) -> str:
     result += f"6 Installments: ${price_info.get('installments_6', 'N/A')}/month\n"
 
     return result
-
-@tool
-def get_multiple_products(product_ids: List[str]) -> str:
-    """
-    Get information for multiple products at once.
-
-    Args:
-        product_ids: List of product IDs to retrieve
-    """
-    results = []
-    for pid in product_ids:
-        result = get_product_by_id.invoke({"product_id": pid})
-        results.append(result)
-
-    return "\n\n---\n\n".join(results)

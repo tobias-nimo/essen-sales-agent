@@ -1,3 +1,9 @@
+# Logs
+logs/
+
+# Outputs
+output/
+
 # Byte-compiled
 __pycache__/
 
@@ -7,3 +13,4 @@ __pycache__/
 
 # Claude
 CLAUDE.md
+.claude/

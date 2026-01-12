@@ -39,8 +39,6 @@ A specialized agent that:
 - **Natural Language Interface**: Interact conversationally to build quotes
 - **Intelligent Product Search**: Find products by name or description
 - **Promotion Discovery**: Automatically find the best credit card promotions
-- **Multiple Payment Methods**: Support for cash, wire transfer, and credit cards
-- **Flexible Installment Plans**: 6, 9, or 12-month payment options
 - **State Management**: Maintains conversation context and quote state
 - **Quote Generation**: Creates downloadable quote documents
 
@@ -78,7 +76,7 @@ essen-sales-agent/
 
 - Python 3.9 or higher
 - [UV](https://docs.astral.sh/uv/) for dependency management
-- OpenAI API key
+- OpenAI or GroqCloud API key
 
 ### Setup
 
@@ -93,14 +91,7 @@ essen-sales-agent/
    uv sync
    ```
 
-3. **Activate the virtual environment:**
-   ```bash
-   source .venv/bin/activate  # On Linux/macOS
-   # or
-   .venv\Scripts\activate     # On Windows
-   ```
-
-4. **Set up environment variables:**
+3. **Set up environment variables:**
    ```bash
    # Required: OpenAI API key
    export OPENAI_API_KEY='your-openai-api-key'
@@ -118,48 +109,7 @@ essen-sales-agent/
 Make sure your virtual environment is activated, then run:
 
 ```bash
-python src/main.py
-```
-
-Or if you made it executable:
-
-```bash
-./src/main.py
-```
-
-### Example Conversation
-
-```
-🤖 Asistente: ¡Hola! ¿En qué puedo ayudarte hoy?
-
-👤 Tú: Necesito un presupuesto para una sartén de 24cm
-
-🤖 Asistente: Claro, déjame buscar sartenes de 24cm en nuestro catálogo...
-[Shows available products]
-
-👤 Tú: La primera opción, una unidad
-
-🤖 Asistente: Perfecto, agregué COMBO ESSEN+ REIN & SARTEN 24 CAPRI al carrito.
-¿Cómo va a pagar el cliente? Efectivo, transferencia o tarjeta de crédito?
-
-👤 Tú: Tarjeta de crédito con Banco Galicia
-
-🤖 Asistente: ¿Qué tarjeta tiene el cliente? (Visa, Mastercard, Amex, etc.)
-
-👤 Tú: Visa, en 12 cuotas
-
-🤖 Asistente: Excelente! Encontré promociones disponibles...
-[Shows promotion options and sets up payment plan]
-
-👤 Tú: Perfecto. El cliente es Juan Pérez, email juan@example.com, teléfono 1234567890
-
-🤖 Asistente: ¡Listo! Todos los datos están completos.
-¿Te gustaría que genere el presupuesto?
-
-👤 Tú: Sí, genera el presupuesto
-
-🤖 Asistente: ¡Presupuesto generado exitosamente!
-Archivo guardado en: /path/to/output/quote_20260112_143022.json
+uv venv run python src/main.py
 ```
 
 ### Commands
@@ -168,33 +118,6 @@ Archivo guardado en: /path/to/output/quote_20260112_143022.json
 - `nuevo` - Start a new quote
 - `ayuda` - Show help information
 - `salir` or `exit` - Exit the application
-
-## Data Files
-
-### catalog.csv
-List of available products with:
-- `id`: Unique product identifier
-- `description`: Product description
-
-### price_list.csv
-Pricing information for products:
-- `id`: Product identifier
-- `base_price`: Base price for promotional calculations
-- `cash_price`: Price for cash/wire payments
-- `installments_12`: Monthly price for 12-month plan
-- `installments_9`: Monthly price for 9-month plan
-- `installments_6`: Monthly price for 6-month plan
-
-### promotions.json
-Available credit card promotions with:
-- `id`: Promotion identifier
-- `name`: Promotion name
-- `banks`: Eligible banks
-- `credit_cards`: Accepted card brands
-- `installments`: Available installment options
-- `availability`: Time period when valid
-- `wallets`: Digital wallet requirements
-- `reimbursement`: Cashback terms
 
 ## State Schema
 
@@ -243,7 +166,7 @@ The system maintains a `SalesQuoteState` with:
 - **LangChain**: Agent framework and tool management
 - **LangGraph**: Multi-agent orchestration and state management
 - **LangSmith**: Tracing and monitoring (optional)
-- **OpenAI**: LLM provider (GPT-4o-mini)
+- **OpenAI** / **GroqCloud**: LLM providers
 
 ### Adding New Products
 
@@ -275,19 +198,6 @@ Edit `data/promotions.json`:
   "reimbursement": null
 }
 ```
-
-## Roadmap
-
-Future enhancements:
-
-- [ ] Generate actual PDF documents (currently outputs JSON)
-- [ ] Add web UI interface
-- [ ] Support for multiple currencies
-- [ ] Email quote delivery
-- [ ] Quote history and tracking
-- [ ] Analytics dashboard
-- [ ] Integration with CRM systems
-- [ ] Multi-language support
 
 ## Contributing
 

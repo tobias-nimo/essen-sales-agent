@@ -1,5 +1,6 @@
 # src/agents/tools/coordinator.py
 
+from config import OUTPUT_DIR
 from agents.catalog_agent import catalog_agent
 from agents.promotions_agent import promotions_agent
 from agents.state import ProductLine, PaymentPlan, CustomerInformation
@@ -18,7 +19,7 @@ def lookup_products(products: list[str]) -> str:
     """Search the catalog for available products and their prices."""
     query = f"""
     Search the catalog for these products:
-    {chr(10).join(f"- {p}" for p in products)}
+    {'\n'.join(f"- {p}" for p in products)}
     """
 
     response = catalog_agent.invoke(
@@ -28,7 +29,7 @@ def lookup_products(products: list[str]) -> str:
     return response['messages'][-1].content
 
 @tool
-def get_available_promotions(banks: list[str], installments: list[int]) -> str:
+def get_available_promotions(banks: list[str], installments: list[int], credit_card: list[str]) -> str:
     """
     Return available sales promotions and discounts
     for the given banks and credit card installment options.
@@ -37,6 +38,7 @@ def get_available_promotions(banks: list[str], installments: list[int]) -> str:
     Find available promotions for:
     - Banks: {', '.join(banks)}
     - Installments: {', '.join(map(str, installments))}
+    - Credit cards: {', '.join(map(str, installments))}
     """
 
     response = promotions_agent.invoke(
@@ -50,7 +52,6 @@ def add_product_to_cart(
     product_id: str,
     description: str,
     quantity: int,
-    unit_price: float,
     runtime: ToolRuntime
 ) -> Command:
     """
@@ -61,15 +62,18 @@ def add_product_to_cart(
         description: Product description
         quantity: Number of units
         unit_price: Price per unit
+
+    NOTE: 
+        This function overwrites the entry for a given product_id.
+        To increase quantity for an existing product, first read the current 
+        quantity and pass the updated total explicitly.
     """
     subtotal = quantity * unit_price
 
     product_line = ProductLine(
         product_id=product_id,
         description=description,
-        quantity=quantity,
-        unit_price=unit_price,
-        subtotal=subtotal
+        quantity=quantity
     )
 
     # Get current state from runtime
@@ -89,6 +93,8 @@ def add_product_to_cart(
             )]
         }
     )
+
+# TODO: add remove_product_from_cart tool
 
 @tool
 def set_payment_method(
@@ -126,9 +132,8 @@ def set_payment_plan(
     bank: str,
     credit_card: str,
     installments: int,
-    price_per_installment: float,
     promotion_id: Optional[str] = None,
-    runtime: ToolRuntime = None
+    runtime: ToolRuntime
 ) -> Command:
     """
     Set the payment plan for credit card purchases.
@@ -144,7 +149,6 @@ def set_payment_plan(
         bank=bank,
         credit_card=credit_card,
         installments=installments,
-        price_per_installment=price_per_installment,
         promotion_id=promotion_id
     )
 
@@ -152,7 +156,7 @@ def set_payment_plan(
         update={
             "payment_plan": payment_plan,
             "messages": [ToolMessage(
-                content=f"Payment plan set: {installments} installments of ${price_per_installment:.2f} with {bank} {credit_card}",
+                content=f"Payment plan set: {installments} installments with {bank} - {credit_card}",
                 tool_call_id=runtime.tool_call_id
             )]
         }
@@ -193,16 +197,12 @@ def set_customer_information(
 def generate_quote_pdf(runtime: ToolRuntime) -> str:
     """
     Generate a PDF document for the sales quote and return a download link.
-    This is a placeholder - in production, this would generate an actual PDF file.
     """
     state = runtime.state
 
     # Validate that all required information is present
     if not state.get("products"):
         return "Cannot generate quote: No products in cart"
-
-    if not state.get("customer_information"):
-        return "Cannot generate quote: Customer information is missing"
 
     if not state.get("payment_method"):
         return "Cannot generate quote: Payment method not set"
@@ -212,7 +212,37 @@ def generate_quote_pdf(runtime: ToolRuntime) -> str:
     customer = state["customer_information"]
     payment_method = state["payment_method"]
     payment_plan = state.get("payment_plan")
-    total = state.get("total_amount", 0)
+
+    # TODO: 
+    #- calculate price_per_installment in case payment_method is CREDIT_CARD
+    #- calculate total_price in case payment_method is CASH / WIRE
+
+    def calculate_budget(state):
+        budget = []
+        for p in state["products"]:
+
+            # CASH or WIRE
+            if state["payment_method"] == "CASH" or state["payment_method"] == "WIRE":
+                # TODO: lookup the cash price for the product id -> unit price
+            # CREDIT_CARD + promotion
+            elif state.get("payment_plan").get("promotion_id"):
+                    # TODO: lookup for the base price for the product id -> unit price
+            # CREDIT_CARD + no promotion
+            else:
+                    # TODO: lookup for the  installment_n price and multiple by n (installments) -> unit price 
+
+            budget.append({
+                        "id": p.product_id,
+                        "description": p.description,
+                        "quantity": p.quantity,
+                        "unit_price": unit_price,
+                        "subtotal": p.subtotal*unit_price
+                    })
+        return budget
+
+    def calculate_total(budget):
+        # TODO: calculate total amount
+        return total_amount
 
     # Generate quote data
     quote_data = {
@@ -222,18 +252,9 @@ def generate_quote_pdf(runtime: ToolRuntime) -> str:
             "email": customer.email,
             "phone": customer.phone
         },
-        "products": [
-            {
-                "id": p.product_id,
-                "description": p.description,
-                "quantity": p.quantity,
-                "unit_price": p.unit_price,
-                "subtotal": p.subtotal
-            }
-            for p in products.values()
-        ],
+        "products": calculate_budget(state),
         "payment_method": payment_method,
-        "total_amount": total
+        "total_amount": calculate_total(budget)
     }
 
     if payment_plan:
@@ -241,7 +262,6 @@ def generate_quote_pdf(runtime: ToolRuntime) -> str:
             "bank": payment_plan.bank,
             "credit_card": payment_plan.credit_card,
             "installments": payment_plan.installments,
-            "price_per_installment": payment_plan.price_per_installment,
             "promotion_id": payment_plan.promotion_id
         }
 
@@ -251,14 +271,11 @@ def generate_quote_pdf(runtime: ToolRuntime) -> str:
     # 3. Return a download URL
 
     # For now, save as JSON
-    output_dir = Path(__file__).parent.parent.parent.parent / "output"
-    output_dir.mkdir(exist_ok=True)
-
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"quote_{timestamp}.json"
-    filepath = output_dir / filename
+    filepath = OUTPUT_DIR / filename
 
     with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(quote_data, f, indent=2, ensure_ascii=False)
 
-    return f"Quote generated successfully! File saved to: {filepath}\n\nIn production, this would be a PDF download link."
+    return f"Quote generated successfully! File saved to: {filepath}"
