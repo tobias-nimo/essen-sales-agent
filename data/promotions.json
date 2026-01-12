@@ -1,0 +1,204 @@
+[
+  {
+    "id": "001",
+    "name": "PROMO001",
+    "banks": ["GALICIA"], //Inclue ex-clientes Galicia+
+    "credit_cards": ["VISA","MASTER","AMEX"],
+    "installments": [1,3,6,9,12],
+    "availability": {
+      "type": "always"
+      },
+    "wallets": [{"name": "MODO", "is_optional": true}],
+    "reimbursement": null
+    },
+  {
+    "id": "002",
+    "name": "PROMO002",
+    "banks": ["MACRO"],
+    "credit_cards": ["VISA","MASTER","AMEX"],
+    "installments": [1,3,6,9,12],
+    "availability": {
+      "type": "always"
+      },
+    "wallets" : [{"name": "MODO", "is_optional": true}],
+    "reimbursement": null
+    },
+  {
+    "id": "003",
+    "name": "PROMO003",
+    "banks": ["INDUSTRIAL"],
+    "credit_cards": ["VISA","MASTER"],
+    "installments": [1,3,6,9,12],
+    "availability": {
+      "type": "always"
+      },
+    "wallets": [{"name": "MODO", "is_optional": true}],
+    "reimbursement": null
+    },
+  {
+    "id": "004",
+    "name": "PROMO004",
+    "banks": ["FRANCES"],
+    "credit_cards": ["VISA","MASTER"],
+    "installments": [1,3,6,9,12],
+    "availability": {
+      "type": "always"
+      },
+    "wallets" : [{"name": "MODO", "is_optional": true}],
+    "reimbursement": null
+    }
+  {
+    "id": "005",
+    "name": "PROMO005",
+    "banks": ["NACION"],
+    "credit_cards": ["VISA","MASTER"],
+    "installments": [1,3,6,9,12],
+    "availability": {
+      "type": "always"
+      },
+    "wallets" : [{"name": "MODO", "is_optional": true}],
+    "reimbursement": null
+    },
+  {
+    "id": "006A",
+    "name": "PROMO006A",
+    "banks": ["PROV_NEUQUEN"],
+    "credit_cards": ["VISA","MASTER"],
+    "installments": [3],
+    "availability": {
+      "type": "weekly",
+      "days": ["TUESDAY"]
+      },
+    "wallets" : [],
+    "reimbursement": null
+    },
+  {
+    "id": "006B",
+    "name": "PROMO006B",
+    "banks": ["BCO_NEUQUEN"],
+    "credit_cards": ["CONFI"],
+    "installments": [6],
+    "availability": {
+      "type": "weekly",
+      "days": ["TUESDAY"]
+      },
+    "wallets" : [],
+    "reimbursement": null
+    },
+  {
+    "id": "007",
+    "name": "PROMO007",
+    "banks": ["RIO"],
+    "credit_cards": ["VISA","MASTER","AMEX"],
+    "installments": [1,3,6,9,12],
+    "availability": {
+      "type": "always"
+      },
+    "wallets" : [{"name": "MODO", "is_optional": true}],
+    "reimbursement": null
+    },
+  {
+    "id": "008",
+    "name": "PROMO008",
+    "banks": ["BCO_CORRIENTES"],
+    "credit_cards": ["VISA","MASTER"],
+    "installments": [1,3,6,9,12,15,18],
+    "availability": {
+      "type": "weekly",
+      "days": ["FRIDAY", "SUNDAY", "SATURDAY"]
+      },
+    "wallets" : [],
+    "reimbursement": {
+      "type": "proportional",
+      "rate": 0.1,
+      "amount": null,
+      "ceiling": null,
+      "description": "Reintegro del 10% en las compras de hasta 12 cuotas sin interés. Sin tope."
+    }
+    },
+  {
+    "id": "009",
+    "name": "PROMO009",
+    "banks": ["BCO_ENTRERIOS", "BCO_SANTACRUZ", "BCO_SANTAFE", "BCO_SANJUAN"],
+    "credit_cards": ["VISA","MASTER", "AMEX"],
+    "installments": [1,3,6,9,12,15],
+    "availability": {
+      "type": "always"
+      },
+    "wallets" : [{"name": "MODO", "is_optional": false}],
+    "reimbursement": null
+    },
+  {
+    "id": "0010A",
+    "name": "PROMO0010A",
+    "banks": ["HIPOTECARIO"],
+    "credit_cards": ["VISA"],
+    "installments": [6,9],
+    "availability": {
+      "type": "always"
+      },
+    "wallets" : [{"name": "MODO", "is_optional": false}],
+    "reimbursement": null
+    },
+  {
+    "id": "0010B",
+    "name": "PROMO0010B",
+    "banks": ["HIPOTECARIO"],
+    "credit_cards": ["VISA"],
+    "installments": [12],
+    "availability": {
+      "type": "weekly",
+      "days": ["THURSDAY"]
+      },
+    "wallets" : [],
+    "reimbursement": null
+    },
+  {
+    "id": "0011",
+    "name": "PROMO0011",
+    "banks": ["BCO_CHACO"],
+    "credit_cards": ["TUYA"],
+    "installments": [1,3,6,9],
+    "availability": {
+      "type": "always"
+      },
+    "wallets" : [],
+    "reimbursement": null
+    },
+  {
+    "id": "0012",
+    "name": "PROMO0012",
+    "banks": ["PROVINCIA"],
+    "credit_cards": ["VISA", "MASTER"],
+    "installments": [12],
+    "availability": {
+      "type": "always"
+      },
+    "wallets" : [],
+    "reimbursement": null
+    },
+  {
+    "id": "0013",
+    "name": "PROMO0013",
+    "banks": ["CREDICOOP"],
+    "credit_cards": ["VISA, CABAL"],
+    "installments": [1,3,6,9,12],
+    "availability": {
+      "type": "always"
+      },
+    "wallets" : [{"name": "MODO", "is_optional": false}],
+    "reimbursement": null
+    },
+  {
+    "id": "0014",
+    "name": "PROMO0014",
+    "banks": [],
+    "credit_cards": ["NAR"],
+    "installments": [1,3,6,9,12],
+    "availability": {
+      "type": "always"
+      },
+    "wallets" : [],
+    "reimbursement": null
+    }
+]
