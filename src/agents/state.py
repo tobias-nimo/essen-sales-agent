@@ -29,6 +29,6 @@ class ProductLine:
 class SalesQuoteState(MessagesState):
     """State for managing sales quote creation"""
     products: Dict[str, ProductLine]
-    payment_method: Optional[Literal["CASH", "WIRE", "CREDIT_CARD"]] = "CASH"
+    payment_method: Optional[Literal["CASH", "WIRE", "CREDIT_CARD"]] = None
     payment_plan: Optional[PaymentPlan] = None
     customer_information: Optional[CustomerInformation] = None

@@ -298,7 +298,6 @@ class Session:
             "payment_method": None,
             "payment_plan": None,
             "customer_information": None,
-            "total_amount": 0.0,
             "messages": []
         }
         self.start_time = datetime.now()
@@ -316,26 +315,26 @@ def handle_command(command: str, session: Session) -> bool:
     """
     cmd = command.lower().strip()
 
-    if cmd in ['/salir', '/exit', '/quit', 'salir', 'exit', 'quit']:
+    if cmd in ['/salir', '/exit', '/quit']:
         print(f"\n{Colors.CYAN}¡Hasta luego! Que tengas un excelente día.{Colors.RESET}\n")
         logger.info(f"Session ended by user: {session.thread_id}")
         return False
 
-    if cmd in ['/nuevo', '/new', 'nuevo']:
+    if cmd in ['/nuevo', '/new']:
         session.reset()
         print_info("Nuevo presupuesto iniciado.")
         print_assistant_message("¡Perfecto! Empecemos un nuevo presupuesto. ¿Qué productos necesitas?")
         return True
 
-    if cmd in ['/estado', '/status', 'estado']:
+    if cmd in ['/estado', '/status']:
         display_quote_status(session.state)
         return True
 
-    if cmd in ['/ayuda', '/help', 'ayuda', 'help']:
+    if cmd in ['/ayuda', '/help']:
         print_help()
         return True
 
-    if cmd in ['/limpiar', '/clear', 'limpiar', 'clear']:
+    if cmd in ['/limpiar', '/clear']:
         print_banner()
         print_commands()
         return True

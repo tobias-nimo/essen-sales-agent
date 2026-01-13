@@ -93,8 +93,9 @@ essen-sales-agent/
 
 3. **Set up environment variables:**
    ```bash
-   # Required: OpenAI API key
+   # Required: OpenAI or Groq API key
    export OPENAI_API_KEY='your-openai-api-key'
+   export GROQ_API_KEY='your-openai-api-key'
 
    # Optional: LangSmith (for tracing and monitoring)
    export LANGCHAIN_TRACING_V2='true'
@@ -115,9 +116,12 @@ uv venv run python src/main.py
 ### Commands
 
 - Type naturally to interact with the agent
-- `nuevo` - Start a new quote
-- `ayuda` - Show help information
-- `salir` or `exit` - Exit the application
+- `/salir`, `/exit` or `/quit` - Exit the application
+- `/nuevo` or `/new` - Start a new quote
+- `/estado` or `/status` - Get current state
+- `/limpiar` or `/clear` - Clear current state 
+- `/ayuda` or `/help` - Show help information
+- `/comandos` or `/commands` - Get available commands
 
 ## State Schema
 
@@ -131,7 +135,6 @@ The system maintains a `SalesQuoteState` with:
     "payment_method": "CASH|WIRE|CREDIT_CARD",
     "payment_plan": PaymentPlan(...),    # For credit card payments
     "customer_information": CustomerInformation(...),
-    "total_amount": float,
     "messages": [...]                    # Conversation history
 }
 ```
@@ -142,6 +145,7 @@ The system maintains a `SalesQuoteState` with:
 - `lookup_products`: Search catalog via catalog agent
 - `get_available_promotions`: Search promotions via promotions agent
 - `add_product_to_cart`: Add product to cart
+- `remove_product_from_cart`: Remove product from cart
 - `set_payment_method`: Set payment method
 - `set_payment_plan`: Configure credit card payment plan
 - `set_customer_information`: Save customer details
@@ -150,7 +154,6 @@ The system maintains a `SalesQuoteState` with:
 ### Catalog Agent Tools
 - `search_products`: Search by keyword
 - `get_product_by_id`: Get specific product details
-- `get_multiple_products`: Batch product lookup
 
 ### Promotions Agent Tools
 - `search_promotions`: Filter by bank/card/installments
@@ -161,12 +164,10 @@ The system maintains a `SalesQuoteState` with:
 
 ### Technology Stack
 
-- **Python 3.9+**: Backend language
-- **UV**: Fast Python package installer and virtual environment manager
-- **LangChain**: Agent framework and tool management
-- **LangGraph**: Multi-agent orchestration and state management
-- **LangSmith**: Tracing and monitoring (optional)
-- **OpenAI** / **GroqCloud**: LLM providers
+- Backend language: **Python 3.9+**
+- Python package installer and venv manager: **UV**
+- Agent framework: **LangChain**, **LangGraph** and **LangSmith** (optional) for tracing and monitoring
+- LLM providers: **OpenAI** or **GroqCloud**
 
 ### Adding New Products
 
